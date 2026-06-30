@@ -86,6 +86,22 @@ export class LmsApi extends Api {
       const next = nav.at(i + 1)?.slug ?? null;
       res.status(200).json({ ...lesson, prev, next });
     },
+
+    completeLesson: (req, res) => {
+      const userId = 1;
+      const { courseId, lessonId } = req.body;
+      const writeResult = this.query.insertLessonCompleted(
+        userId,
+        courseId,
+        lessonId,
+      );
+      if (writeResult.changes === 0) {
+        throw new RouteError(400, 'erro ao completar aula');
+      }
+      res.status(201).json({
+        title: 'aula concluída',
+      });
+    },
   } satisfies Api['handlers'];
   tables(): void {
     this.db.exec(lmsTables);
@@ -99,5 +115,6 @@ export class LmsApi extends Api {
       '/lms/lesson/:courseSlug/:lessonSlug',
       this.handlers.getLesson,
     );
+    this.router.post('/lms/lesson/complete', this.handlers.completeLesson);
   }
 }
