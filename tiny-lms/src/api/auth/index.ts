@@ -55,3 +55,4 @@ export class AuthApi extends Api {
     this.router.post('/auth/login', this.handlers.postLogin);
   }
 }
+
