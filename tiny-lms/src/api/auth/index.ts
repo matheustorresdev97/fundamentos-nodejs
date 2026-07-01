@@ -5,6 +5,8 @@ import { COOKIE_SID_KEY, SessionService } from './services/session.ts';
 import { authTables } from './tables.ts';
 import { AuthMiddleware } from './middleware/auth.ts';
 import { Password } from './utils/password.ts';
+import { v } from '../../core/utils/validate.ts';
+import { rateLimit } from '../../core/middleware/rate-limit.ts';
 
 export class AuthApi extends Api {
   query = new AuthQuery(this.db);
@@ -13,7 +15,12 @@ export class AuthApi extends Api {
   pass = new Password('segredo');
   handlers = {
     postUser: async (req, res) => {
-      const { name, username, email, password } = req.body;
+      const { name, username, email, password } = {
+        name: v.string(req.body.name),
+        username: v.string(req.body.username),
+        email: v.email(req.body.email),
+        password: v.password(req.body.password),
+      };
 
       const emailExists = this.query.selectUser('email', email);
       if (emailExists) {
@@ -40,7 +47,10 @@ export class AuthApi extends Api {
     },
 
     postLogin: async (req, res) => {
-      const { email, password } = req.body;
+      const { email, password } = {
+        email: v.email(req.body.email),
+        password: v.password(req.body.password),
+      };
       const user = this.query.selectUser('email', email);
       if (!user) {
         throw new RouteError(404, 'email ou senha incorretos');
@@ -65,7 +75,10 @@ export class AuthApi extends Api {
     },
 
     passwordUpdate: async (req, res) => {
-      const { password, new_password } = req.body;
+      const { password, new_password } = {
+        password: v.password(req.body.password),
+        new_password: v.password(req.body.new_password),
+      };
       if (!req.session) {
         throw new RouteError(401, 'não autorizado');
       }
@@ -100,7 +113,9 @@ export class AuthApi extends Api {
     },
 
     passwordForgot: async (req, res) => {
-      const { email } = req.body;
+      const { email } = {
+        email: v.email(req.body.email),
+      };
       const user = this.query.selectUser('email', email);
       if (!user) {
         return res.status(200).json({ title: 'verifique seu email' });
@@ -124,7 +139,10 @@ export class AuthApi extends Api {
     },
 
     passwordReset: async (req, res) => {
-      const { new_password, token } = req.body;
+      const { token, new_password } = {
+        token: v.string(req.body.token),
+        new_password: v.password(req.body.new_password),
+      };
       const reset = this.session.validateToken(token);
       if (!reset) {
         throw new RouteError(400, 'token inválido');
@@ -161,11 +179,19 @@ export class AuthApi extends Api {
     this.db.exec(authTables);
   }
   routes(): void {
-    this.router.post('/auth/user', this.handlers.postUser);
-    this.router.post('/auth/login', this.handlers.postLogin);
+    this.router.post('/auth/user', this.handlers.postUser, [
+      rateLimit(30_000, 15),
+    ]);
+    this.router.post('/auth/login', this.handlers.postLogin, [
+      rateLimit(30_000, 5),
+    ]);
     this.router.delete('/auth/logout', this.handlers.deleteSession);
-    this.router.post('/auth/password/forgot', this.handlers.passwordForgot);
-    this.router.post('/auth/password/reset', this.handlers.passwordReset);
+    this.router.post('/auth/password/forgot', this.handlers.passwordForgot, [
+      rateLimit(30_000, 5),
+    ]);
+    this.router.post('/auth/password/reset', this.handlers.passwordReset, [
+      rateLimit(30_000, 5),
+    ]);
     this.router.put('/auth/password/update', this.handlers.passwordUpdate, [
       this.auth.guard('user'),
     ]);
