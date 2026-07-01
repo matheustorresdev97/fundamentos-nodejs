@@ -196,9 +196,9 @@ const functions = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        name: 'Ana Rafael',
-        username: 'ana',
-        email: 'ana@origamid.com',
+        name: 'Andre Rafael',
+        username: 'andre',
+        email: 'andre@origamid.com',
         password: '12345678',
       }),
     });
