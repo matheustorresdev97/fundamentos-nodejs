@@ -63,21 +63,29 @@
           rgba(255, 255, 255, 0.2),
           rgba(255, 255, 255, 0.1));
     }
+
+    #logout {
+      max-width: 200px;
+      margin: 0 auto;
+    }
   </style>
 
   <form id="login">
     <label for="email">Email</label>
-    <input type="email" id="email" name="email" value="matheus@github.com" />
+    <input type="email" id="email" name="email" value="matheus@gmail.com" />
     <label for="password">Senha</label>
     <input type="password" id="password" name="password" value="12345678" />
     <button>Logar</button>
   </form>
+
+  <button id="logout">Sair</button>
 
   <pre id="result"></pre>
 
   <script>
     const form = document.getElementById('login');
     const result = document.getElementById('result');
+    const logout = document.getElementById('logout');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -91,6 +99,16 @@
       });
       const body = await response.json();
       result.innerText = JSON.stringify(body, null, 2);
+      if (response.ok) {
+        window.location.reload();
+      }
+    });
+
+    logout.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const response = await fetch('/auth/logout', {
+        method: 'DELETE',
+      });
       if (response.ok) {
         window.location.reload();
       }
