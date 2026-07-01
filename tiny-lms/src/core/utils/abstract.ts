@@ -15,9 +15,9 @@ export abstract class CoreProvider {
 export abstract class Api extends CoreProvider {
   handlers: Record<string, Handler> = {};
   /** Utlize para criar as tabelas */
-  tables() {}
+  tables() { }
   /** Registre as rotas da API aqui */
-  routes() {}
+  routes() { }
   init() {
     this.tables();
     this.routes();
