@@ -196,9 +196,9 @@ const functions = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        name: 'Andre Rafael',
-        username: 'andre',
-        email: 'andre@origamid.com',
+        name: 'Matheus Torres',
+        username: 'matheus',
+        email: 'matheus@email.com',
         password: '12345678',
       }),
     });
@@ -245,6 +245,25 @@ const functions = {
     const response = await fetch(base + '/lms/certificate/' + process.argv[3]);
     const body = await response.json();
     console.log(body);
+  },
+
+  async postBig() {
+    const response = await fetch(base + '/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        big: 'a'.repeat(6_000_000),
+      },
+      body: JSON.stringify('a'.repeat(6_000_000)),
+    });
+    const body = await response.json('');
+    console.log(body);
+  },
+
+  async ataque() {
+    for (let i = 0; i < 10; i++) {
+      fetch(base + '/limite');
+    }
   },
 };
 
