@@ -158,4 +158,26 @@ export class AuthQuery extends Query {
       )
       .run(user_id);
   }
+  selectUsers(search: string = '', limit: number = 10, page: number = 1) {
+    const s = `%${search.trim()}%`;
+    const safeLimit = limit < 100 ? limit : 100;
+    const offset = (page - 1) * safeLimit;
+    return this.db
+      .query(
+        /*sql*/ `
+      SELECT "id", "name", "email", "created",
+      COUNT("id") OVER() as "total"
+      FROM "users"
+      WHERE "name" LIKE ? OR "email" LIKE ?
+      ORDER BY "created" DESC
+      LIMIT ? OFFSET ?`,
+      )
+      .all(s, s, safeLimit, offset) as {
+      id: number;
+      name: string;
+      email: string;
+      created: string;
+      total: number;
+    }[];
+  }
 }

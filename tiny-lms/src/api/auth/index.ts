@@ -126,7 +126,7 @@ export class AuthApi extends Api {
         ua: req.headers['user-agent'] || '',
       });
 
-      const resetLink = `${req.baseurl}/password/reset/?token=${token}`;
+      const resetLink = `${req.baseurl}/#/resetar/?token=${token}`;
 
       const mailContent = {
         to: user.email,
@@ -174,13 +174,29 @@ export class AuthApi extends Api {
       res.setHeader('Vary', 'Cookie');
       res.status(204).json({ title: 'logout' });
     },
+
+    searchUsers: (req, res) => {
+      const { s, page } = {
+        s: v.o.string(req.query.get('s')),
+        page: v.o.number(req.query.get('page')),
+      };
+      const result = this.query.selectUsers(s, 5, page);
+      if (result.length === 0) {
+        res.setHeader('X-Total-Count', '0');
+        res.status(200).json([]);
+        return;
+      }
+      const total = result[0].total;
+      res.setHeader('X-Total-Count', String(total));
+      res.status(200).json(result);
+    },
   } satisfies Api['handlers'];
   tables(): void {
     this.db.exec(authTables);
   }
   routes(): void {
     this.router.post('/auth/user', this.handlers.postUser, [
-      rateLimit(30_000, 15),
+      rateLimit(30_000, 50),
     ]);
     this.router.post('/auth/login', this.handlers.postLogin, [
       rateLimit(30_000, 5),
@@ -197,6 +213,9 @@ export class AuthApi extends Api {
     ]);
     this.router.get('/auth/session', this.handlers.getSession, [
       this.auth.guard('user'),
+    ]);
+    this.router.get('/auth/users/search', this.handlers.searchUsers, [
+      this.auth.guard('admin'),
     ]);
   }
 }
