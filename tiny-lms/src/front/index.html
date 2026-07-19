@@ -458,6 +458,63 @@
       #resetar-curso button {
         margin: 1rem auto;
       }
+
+      /* AULA */
+      #aula h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0px;
+      }
+      #breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--gray-4);
+      }
+      #breadcrumb a {
+        color: var(--gray-4);
+        text-decoration: none;
+        font-family: sans-serif;
+        font-size: 0.75rem;
+      }
+      #video {
+        aspect-ratio: 16/9;
+        margin: 1rem auto;
+        border-radius: 12px;
+        border: 1px solid var(--gray-1);
+        overflow: hidden;
+      }
+      video {
+        aspect-ratio: 16/9;
+        max-width: 100%;
+      }
+      #aula-nav {
+        display: grid;
+        grid-template-columns: 100px 1fr 100px;
+        justify-content: space-between;
+        justify-items: center;
+      }
+      #aula-nav a,
+      #aula-nav button {
+        padding: 0.5rem;
+        min-width: 70px;
+        font-size: 0.75rem;
+        line-height: 1;
+      }
+
+      /* CERTIFICADOS */
+      #certificados ul {
+        list-style: none;
+        display: grid;
+        gap: 1.5rem;
+      }
+      #certificados ul li a {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        padding: 1rem;
+        align-items: center;
+        font-family: var(--font);
+      }
     </style>
 
     <script>
@@ -546,6 +603,24 @@
         `;
       }
 
+      function renderCompleteButton(courseId, lessonId) {
+        setTimeout(() => {
+          sendForm('POST', '/lms/lesson/complete', 'completar', () => {
+            document.getElementById('completar').innerHTML = '<span></span>';
+          });
+        }, 50);
+
+        return /*html*/ `
+          <div id="completar">
+            <form>
+              <input name="courseId" type="hidden" value="${esc(courseId)}">
+              <input name="lessonId" type="hidden" value="${esc(lessonId)}">
+              <button>Completar</button>
+            </form>
+          </div>
+        `;
+      }
+
       const data = {
         cursos: (route) => {
           getData('/lms/courses', (courses) => {
@@ -609,17 +684,87 @@
               `;
             }
             html += `</ul>
-              ${
-                completed.length === 0 ? renderResetCourseButton(course.id) : ''
-              }
+              ${completed.length > 0 ? renderResetCourseButton(course.id) : ''}
             `;
             render.innerHTML = html;
 
             console.log(data);
           });
         },
-        certificados: () => {
-          console.log('RENDERIZAR CERTIFICADOS');
+        aula: (route) => {
+          const [_, curso, aula] = location.hash
+            .replace('#', '')
+            .split('/')
+            .filter(Boolean);
+
+          if (!curso || !aula) return;
+          getData(`/lms/lesson/${curso}/${aula}`, (lesson) => {
+            console.log(lesson);
+            const render = route.querySelector('.render');
+            render.innerHTML = '';
+            let html = /*html*/ `
+              <div>
+                <h2>${esc(lesson.title)}</h2>
+                <div id="breadcrumb">
+                  <a href="#/cursos">cursos</a> >
+                  <a href="#/cursos/${curso}">${curso}</a>  
+                </div>
+                <div id="video">
+                  <video poster=""preload="metadata" src="/${
+                    lesson.video
+                  }" controls></video> 
+                </div>
+                <nav id="aula-nav">
+                  ${
+                    lesson.prev
+                      ? `<a class="btn" href="${esc(
+                          `#/aula/${curso}/${lesson.prev}`,
+                        )}">Anterior</a>`
+                      : `<span></span>`
+                  }
+                  ${
+                    lesson.completed
+                      ? `<span></span>`
+                      : renderCompleteButton(lesson.course_id, lesson.id)
+                  }
+                  ${
+                    lesson.next
+                      ? `<a class="btn" href="${esc(
+                          `#/aula/${curso}/${lesson.next}`,
+                        )}">Próxima</a>`
+                      : `<span></span>`
+                  }
+                </nav>
+              </div>
+            `;
+            render.innerHTML = html;
+          });
+        },
+
+        certificados: (route) => {
+          getData('/lms/certificates', (certicates) => {
+            if (!Array.isArray(certicates)) return;
+            const render = route.querySelector('.render');
+            render.innerHTML = '';
+            let html = '<ul>';
+            for (const certificate of certicates) {
+              html += /*html*/ `
+              <li>
+                <a class="btn" target="_blank" href="/lms/certificate/${
+                  certificate.id
+                }">${esc(certificate.title)}
+                <span>${certificate.completed
+                  .slice(0, 10)
+                  .split('-')
+                  .reverse()
+                  .join('/')}</span>
+                </a>
+              </li>
+              `;
+            }
+            html += '</ul>';
+            render.innerHTML = html;
+          });
         },
       };
 
