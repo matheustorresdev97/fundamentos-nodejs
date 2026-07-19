@@ -9,11 +9,11 @@
     "strict": true,
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node"]
   },
   "include": [
-    "api/**/*.ts",
-    "core/**/*.ts",
+    "src/**/*.ts",
     "tests",
     "*.ts"
   ],

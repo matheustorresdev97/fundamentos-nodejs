@@ -1,7 +1,7 @@
 import type { Middleware } from '../router.ts';
 import { RouteError } from '../utils/route-error.ts';
 
-const MAX_BYTES = 5_000_000;
+const MAX_BYTES = 1_000_000;
 
 export const bodyJson: Middleware = async (req, res) => {
   if (
@@ -13,7 +13,7 @@ export const bodyJson: Middleware = async (req, res) => {
 
   const contentLength = Number(req.headers['content-length']);
   if (!Number.isInteger(contentLength)) {
-    throw new RouteError(400, 'content-length invalído');
+    throw new RouteError(400, 'content-length inválido');
   }
   if (contentLength > MAX_BYTES) {
     throw new RouteError(413, 'corpo grande');
