@@ -362,6 +362,20 @@
       [data-role].ativo {
         display: block;
       }
+      .ok,
+      .fail {
+        padding: 0.5rem 1rem;
+        animation: slideIn 0.3s ease-out forwards;
+        border-radius: 100px;
+        width: max-content;
+        background: #211100;
+        color: #ffca16;
+        grid-column: 2;
+      }
+      .ok {
+        background: #0c281c;
+        color: #3dd78c;
+      }
     </style>
 
     <script>
@@ -385,6 +399,7 @@
           const response = await fetch('/auth/session');
           const body = await response.json();
           if (!response.ok) throw new Error();
+          user = body.role;
           return user;
         } catch (error) {
           return user;
@@ -410,6 +425,50 @@
       }
       window.addEventListener('DOMContentLoaded', router);
       window.addEventListener('hashchange', router);
+
+      // FORMULÁRIOS
+      async function sendForm(method, url, id, callback) {
+        const form = document.querySelector('#' + id + ' form');
+        form?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const data = new FormData(form);
+          let response;
+          let body = {};
+          const badge = document.createElement('div');
+          try {
+            response = await fetch(url, {
+              method: method,
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(Object.fromEntries(data)),
+            });
+            body = await response.json();
+            if (!response.ok) throw new Error();
+            if (typeof callback === 'function') callback(response, body);
+            badge.innerText = `${response.status}`;
+            badge.classList.add('ok');
+          } catch (error) {
+            badge.innerText = `${response.status} - ${body?.title}`;
+            badge.classList.add('fail');
+            console.log(response);
+          } finally {
+            form.append(badge);
+            setTimeout(() => {
+              badge?.remove();
+            }, 1500);
+          }
+        });
+      }
+
+      sendForm('POST', '/auth/login', 'login', async () => {
+        user = await getUser();
+        if (user === 'user') location.hash = '/cursos';
+        if (user === 'admin') location.hash = '/criar-curso';
+      });
+      sendForm('POST', '/auth/user', 'criar-conta', () => {
+        location.hash = '/login';
+      });
     </script>
   </body>
 </html>

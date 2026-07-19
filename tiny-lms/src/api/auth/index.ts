@@ -163,7 +163,7 @@ export class AuthApi extends Api {
       if (!req.session) {
         throw new RouteError(401, 'não autorizado');
       }
-      res.status(200).json({ title: 'valida' });
+      res.status(200).json({ title: 'valida', role: req.session.role });
     },
 
     deleteSession: (req, res) => {
