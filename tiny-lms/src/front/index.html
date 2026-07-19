@@ -64,10 +64,10 @@
       <section id="resetar" data-role="public">
         <h2>Resetar Senha</h2>
         <form>
-          <label for="new_password">Email</label>
+          <label for="new_password">Senha</label>
           <input type="password" name="new_password" id="new_password" />
-          <input type="hidden" />
-          <button>Resetar Senhar</button>
+          <input type="hidden" name="token" />
+          <button>Resetar Senha</button>
         </form>
       </section>
 
@@ -575,6 +575,8 @@
           if (user !== route.dataset.role) location.hash = '/login';
           route.classList.add('ativo');
           if (typeof data[r] === 'function') data[r](route);
+        } else {
+          if (typeof data[r] === 'function') data[r]();
         }
       }
       window.addEventListener('DOMContentLoaded', router);
@@ -740,7 +742,6 @@
             render.innerHTML = html;
           });
         },
-
         certificados: (route) => {
           getData('/lms/certificates', (certicates) => {
             if (!Array.isArray(certicates)) return;
@@ -765,6 +766,22 @@
             html += '</ul>';
             render.innerHTML = html;
           });
+        },
+
+        sair: async () => {
+          await fetch('/auth/logout', {
+            method: 'DELETE',
+          });
+          user = 'public';
+          location.hash = '/login';
+          handleUserNav(user);
+        },
+        resetar: () => {
+          const query = location.hash.split('=');
+          if (query[1]) {
+            const token = document.querySelector('input[name="token"]');
+            if (token) token.value = query[1];
+          }
         },
       };
 
@@ -811,6 +828,8 @@
       sendForm('POST', '/auth/user', 'criar-conta', () => {
         location.hash = '/login';
       });
+      sendForm('POST', '/auth/password/forgot', 'perdeu');
+      sendForm('POST', '/auth/password/reset', 'resetar');
     </script>
   </body>
 </html>
