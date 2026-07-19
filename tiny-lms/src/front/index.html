@@ -376,9 +376,105 @@
         background: #0c281c;
         color: #3dd78c;
       }
+
+      /* CURSO */
+      #curso {
+        margin-top: 2rem;
+      }
+      .curso-item {
+        padding: 0 1rem 2rem 1rem;
+        border-bottom: 2px dashed var(--gray-1);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        text-align: center;
+        text-wrap: balance;
+      }
+      .curso-item > *:not(.btn) {
+        padding: 0.5rem;
+      }
+      .curso-item span:first-of-type {
+        border-right: 1px solid var(--gray-1);
+        justify-self: end;
+      }
+      .curso-item span:last-of-type {
+        border-left: 1px solid var(--gray-1);
+        justify-self: start;
+      }
+      .curso-item p,
+      .curso-item h2,
+      .curso-item .btn {
+        grid-column: 1/-1;
+      }
+      .curso-item .btn {
+        margin-top: 1rem;
+        justify-self: center;
+      }
+      .curso-item h2 {
+        margin: 1rem 0 0 0;
+      }
+      .curso-item p,
+      .curso-item span {
+        color: var(--gray-5);
+      }
+
+      /* AULAS CURSO */
+      .curso-aulas {
+        list-style: none;
+        margin-top: 1rem;
+      }
+      .curso-aulas li a {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 1rem;
+        padding: 0.75rem;
+        text-decoration: none;
+        align-items: center;
+        color: var(--gray-6);
+      }
+      .curso-aulas li:nth-of-type(even) a {
+        background: #111;
+      }
+      .curso-aulas li a:hover {
+        background: var(--gray-2);
+      }
+      .curso-aulas li a span {
+        color: var(--gray-4);
+        font-size: 0.75rem;
+        font-family: monospace;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .curso-aulas .status {
+        display: block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        border: 1px solid var(--gray-3);
+      }
+      .curso-aulas .status.completa {
+        background: linear-gradient(rgb(172, 239, 117), rgb(23, 232, 128));
+      }
+      #resetar-curso button {
+        margin: 1rem auto;
+      }
     </style>
 
     <script>
+      const esc = (v) =>
+        String(v)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+
+      const secToMin = (seconds) => {
+        const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const ss = String(Math.floor(seconds % 60)).padStart(2, '0');
+        return `${mm}:${ss}`;
+      };
+
       const routes = document.querySelectorAll('section[data-role]');
 
       const navs = document.querySelectorAll('nav[data-role]');
@@ -421,10 +517,111 @@
         if (route) {
           if (user !== route.dataset.role) location.hash = '/login';
           route.classList.add('ativo');
+          if (typeof data[r] === 'function') data[r](route);
         }
       }
       window.addEventListener('DOMContentLoaded', router);
       window.addEventListener('hashchange', router);
+
+      async function getData(url, callback) {
+        const response = await fetch(url);
+        const body = await response.json();
+        callback(body, response);
+      }
+
+      function renderResetCourseButton(courseId) {
+        setTimeout(() => {
+          sendForm('DELETE', '/lms/course/reset', 'resetar-curso', () => {
+            location.reload();
+          });
+        }, 50);
+
+        return /*html*/ `
+          <div id="resetar-curso">
+            <form>
+              <input name="courseId" type="hidden" value="${esc(courseId)}">
+              <button>Resetar</button>
+            </form>
+          </div>
+        `;
+      }
+
+      const data = {
+        cursos: (route) => {
+          getData('/lms/courses', (courses) => {
+            const render = route.querySelector('.render');
+            render.innerHTML = '';
+            let html = '';
+            for (const course of courses) {
+              html += /*html*/ `
+                <div class="curso-item">
+                  <h2>${esc(course.title)}</h2>
+                  <p>${esc(course.description)}</p>
+                  <span>Aulas: ${esc(course.lessons)}</span>
+                  <span>Horas: ${esc(course.hours)}</span>
+                  <a class="btn" href="#/curso/${esc(course.slug)}">
+                    ${esc(course.title)}
+                  </a>
+                </div>
+              `;
+            }
+            render.innerHTML = html;
+          });
+        },
+        curso: (route) => {
+          const [_, curso] = location.hash
+            .replace('#', '')
+            .split('/')
+            .filter(Boolean);
+          if (!curso) return;
+
+          getData(`/lms/course/${curso}`, (data) => {
+            const { course, lessons, completed } = data;
+            const render = route.querySelector('.render');
+            render.innerHTML = '';
+            let html = /*html*/ `
+            <div class="curso-item">
+              <h2>${esc(course.title)}</h2>
+              <p>${esc(course.description)}</p>
+              <span>Aulas: ${esc(course.lessons)}</span>
+              <span>Horas: ${esc(course.hours)}</span>
+            </div>`;
+
+            html += '<ul class="curso-aulas">';
+
+            for (const lesson of lessons) {
+              const isCompleted = completed.some(
+                (x) => x.lesson_id == lesson.id,
+              );
+
+              html += /*html*/ `
+              <li>
+                <a href="#/aula/${esc(course.slug)}/${esc(lesson.slug)}">
+                  ${esc(lesson.title)}
+                  <span>
+                    <span>${secToMin(lesson.seconds)}</span>
+                    <span class="status ${
+                      isCompleted ? 'completa' : ''
+                    }"></span>
+                  </span>
+                </a>
+              </li>
+              `;
+            }
+            html += `</ul>
+              ${
+                completed.length === 0 ? renderResetCourseButton(course.id) : ''
+              }
+            `;
+            render.innerHTML = html;
+
+            console.log(data);
+          });
+        },
+        certificados: () => {
+          console.log('RENDERIZAR CERTIFICADOS');
+        },
+      };
 
       // FORMULÁRIOS
       async function sendForm(method, url, id, callback) {
