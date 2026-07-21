@@ -29,7 +29,7 @@ type LessonCreate = Omit<LessonData, 'id' | 'course_id' | 'created'> & {
   courseSlug: string;
 };
 
-type CertificateFullData = {
+export type CertificateFullData = {
   id: string;
   name: string;
   title: string;

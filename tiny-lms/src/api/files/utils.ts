@@ -1,5 +1,9 @@
 import { Transform } from 'node:stream';
 import { RouteError } from '../../core/utils/route-error.ts';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import path from 'node:path';
+import { rename } from 'node:fs/promises';
 
 export const mimeType: Record<string, string> = {
   '.ico': 'image/x-icon',
@@ -18,7 +22,6 @@ export const mimeType: Record<string, string> = {
   '.pdf': 'application/pdf',
   '.zip': 'application/zip',
 };
-('id1, id2');
 
 export function checkETag(match: string | undefined, etag: string) {
   if (!match) return false;
@@ -34,8 +37,21 @@ export function LimitBytes(max: number) {
       if (size > max) {
         return next(new RouteError(413, 'corpo grande'));
       }
-      console.log(chunk.length);
       next(null, chunk);
     },
   });
+}
+
+export async function cropImage(input: string, width: number, height: number) {
+  try {
+    const ext = path.extname(input);
+    const output = input.replace(ext, `.temp${ext}`);
+    const command = 'vipsthumbnail';
+    const args = [input, '-s', `${width}x${height}`, '--crop', '-o', output];
+    const child = spawn(command, args);
+    await once(child, 'close');
+    await rename(output, input);
+  } catch {
+    throw new RouteError(400, 'erro ao cortar imagem');
+  }
 }

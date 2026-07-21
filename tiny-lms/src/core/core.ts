@@ -10,21 +10,29 @@ import { customResponse } from './http/custom-response.ts';
 import { bodyJson } from './middleware/body-json.ts';
 import { RouteError } from './utils/route-error.ts';
 import { Database } from './database.ts';
+import { Mail } from './mail/mail.ts';
+import { DB_PATH, EMAIL_KEY } from '../../env.ts';
 
 export class Core {
   router: Router;
   server: Server;
   db: Database;
+  mail: Mail;
   constructor() {
     this.router = new Router();
     this.router.use([bodyJson]);
-    this.db = new Database('./lms.sqlite');
+    this.db = new Database(DB_PATH);
     this.server = createServer(this.handler);
+    this.mail = new Mail(EMAIL_KEY);
   }
   handler = async (request: IncomingMessage, response: ServerResponse) => {
     try {
-      const req = await customRequest(request);
+      const req = customRequest(request);
       const res = customResponse(response);
+
+      if (req.method === 'HEAD') {
+        req.method = 'GET';
+      }
 
       for (const middleware of this.router.middlewares) {
         await middleware(req, res);

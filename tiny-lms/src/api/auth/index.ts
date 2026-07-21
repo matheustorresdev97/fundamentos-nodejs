@@ -7,12 +7,13 @@ import { AuthMiddleware } from './middleware/auth.ts';
 import { Password } from './utils/password.ts';
 import { v } from '../../core/utils/validate.ts';
 import { rateLimit } from '../../core/middleware/rate-limit.ts';
+import { PEPPER } from '../../../env.ts';
 
 export class AuthApi extends Api {
   query = new AuthQuery(this.db);
   session = new SessionService(this.core);
   auth = new AuthMiddleware(this.core);
-  pass = new Password('segredo');
+  pass = new Password(PEPPER);
   handlers = {
     postUser: async (req, res) => {
       const { name, username, email, password } = {
@@ -130,11 +131,27 @@ export class AuthApi extends Api {
 
       const mailContent = {
         to: user.email,
-        subject: 'Password Reset',
-        body: `Utilize o link abaixo para resetar a sua senha: \r\n ${resetLink}`,
+        subject: 'Resetar Senha',
+        body: /*html*/ `
+        <h1 style="font-size: 1.25rem; font-family: sans-serif;">
+          Olá, ${user.email}
+        </h1>
+        <p style="font-size: 1rem; font-family: sans-serif;">
+          você solicitou a redefinição da sua senha:
+        </p>
+        <a style="padding: .5rem 1rem; background: black; color: white; text-decoration: none; border-radius: 4px; font-family: sans-serif;" href="${resetLink}">
+          Resetar Senha
+        </a>
+        <p style="color: #555; margin-top: 2rem; font-family: sans-serif;">
+          Se você não solicitou a redefinição, ignore este e-mail.
+        </p>`,
       };
 
-      console.log(mailContent);
+      const { ok } = await this.mail.send(mailContent);
+      if (!ok) {
+        throw new RouteError(400, 'erro ao enviar email');
+      }
+
       res.status(200).json({ title: 'verifique seu email' });
     },
 
@@ -193,6 +210,10 @@ export class AuthApi extends Api {
   } satisfies Api['handlers'];
   tables(): void {
     this.db.exec(authTables);
+    this.query.clearSessions();
+    setInterval(() => {
+      this.query.clearSessions();
+    }, 1000 * 60 * 60 * 6).unref();
   }
   routes(): void {
     this.router.post('/auth/user', this.handlers.postUser, [

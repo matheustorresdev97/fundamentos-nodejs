@@ -5,19 +5,21 @@ export abstract class CoreProvider {
   core: Core;
   router: Core['router'];
   db: Core['db'];
+  mail: Core['mail'];
   constructor(core: Core) {
     this.core = core;
     this.router = core.router;
     this.db = core.db;
+    this.mail = core.mail;
   }
 }
 
 export abstract class Api extends CoreProvider {
   handlers: Record<string, Handler> = {};
   /** Utlize para criar as tabelas */
-  tables() { }
+  tables() {}
   /** Registre as rotas da API aqui */
-  routes() { }
+  routes() {}
   init() {
     this.tables();
     this.routes();

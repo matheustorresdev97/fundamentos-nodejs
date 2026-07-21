@@ -180,4 +180,13 @@ export class AuthQuery extends Query {
       total: number;
     }[];
   }
+  clearSessions() {
+    return this.db
+      .query(
+        /*sql*/ `
+      DELETE FROM "sessions"
+      WHERE "expires" < UNIXEPOCH('now')`,
+      )
+      .run();
+  }
 }

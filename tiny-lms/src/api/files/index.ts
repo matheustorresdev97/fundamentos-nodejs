@@ -4,19 +4,20 @@ import { createReadStream, createWriteStream } from 'node:fs';
 import { readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { v } from '../../core/utils/validate.ts';
 import path from 'node:path';
-import { checkETag, LimitBytes, mimeType } from './utils.ts';
+import { checkETag, cropImage, LimitBytes, mimeType } from './utils.ts';
 import { RouteError } from '../../core/utils/route-error.ts';
 import { randomUUID } from 'node:crypto';
+import { FILES_PATH } from '../../../env.ts';
+import { AuthMiddleware } from '../auth/middleware/auth.ts';
 
 const MAX_BYTES = 150 * 1024 * 1024; // 150 MiB
 
-const FILES_PATH = './files';
-
 export class FilesApi extends Api {
+  auth = new AuthMiddleware(this.core);
   handlers = {
-    sendFile: async (req, res) => {
+    publicFile: async (req, res) => {
       const name = v.file(req.params.name);
-      const filePath = path.join(FILES_PATH, name);
+      const filePath = path.join(FILES_PATH, 'public', name);
       const ext = path.extname(name);
       let st;
       try {
@@ -60,15 +61,26 @@ export class FilesApi extends Api {
         throw new RouteError(413, 'corpo grande');
       }
       const name = v.file(req.headers['x-filename']);
+      const visibility =
+        v.o.string(req.headers['x-visibility']) === 'public'
+          ? 'public'
+          : 'private';
       const now = Date.now();
       const ext = path.extname(name);
       const finalName = `${name.replace(ext, '')}-${now}${ext}`;
-      const tempPath = path.join(FILES_PATH, `${randomUUID()}.temp`);
-      const writePath = path.join(FILES_PATH, finalName);
+      const tempPath = path.join(
+        FILES_PATH,
+        visibility,
+        `${randomUUID()}.temp`,
+      );
+      const writePath = path.join(FILES_PATH, visibility, finalName);
       const writeStream = createWriteStream(tempPath, { flags: 'wx' });
       try {
         await pipeline(req, LimitBytes(MAX_BYTES), writeStream);
         await rename(tempPath, writePath);
+        if (ext === '.jpg') {
+          await cropImage(writePath, 320, 200);
+        }
         res.status(201).json({ path: writePath, name: finalName });
       } catch (error) {
         if (error instanceof RouteError) {
@@ -80,9 +92,19 @@ export class FilesApi extends Api {
         await rm(tempPath, { force: true }).catch(() => {});
       }
     },
+    privateFile: (req, res) => {
+      const name = v.file(req.params.name);
+      res.setHeader('X-Accel-Redirect', name);
+      res.status(200).end();
+    },
   } satisfies Api['handlers'];
   routes(): void {
-    this.router.get('/files/:name', this.handlers.sendFile);
-    this.router.post('/files', this.handlers.uploadFile);
+    this.router.get('/files/public/:name', this.handlers.publicFile);
+    this.router.get('/files/private/:name', this.handlers.privateFile, [
+      this.auth.guard('user'),
+    ]);
+    this.router.post('/files/upload', this.handlers.uploadFile, [
+      this.auth.guard('admin'),
+    ]);
   }
 }
